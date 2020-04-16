@@ -12,6 +12,8 @@ npx deemon COMMAND [ARGS]
 
 ## Example 
 
+[![asciicast](https://asciinema.org/a/oinexj5mqxxqhMieBbUW5WuXV.svg)](https://asciinema.org/a/oinexj5mqxxqhMieBbUW5WuXV)
+
 ```
 npx deemon /bin/bash -c "while true; do date; sleep 1; done"
 ```
