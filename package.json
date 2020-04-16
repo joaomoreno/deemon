@@ -1,6 +1,6 @@
 {
   "name": "deemon",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Run a process in the background and attach to it",
   "repository": "git@github.com:joaomoreno/deemon.git",
   "author": "João Moreno",
