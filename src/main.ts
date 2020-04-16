@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import * as path from 'path';
 import * as net from 'net';
 import * as os from 'os';
