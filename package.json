@@ -2,10 +2,10 @@
   "name": "deemon",
   "version": "1.0.0",
   "description": "Run a process in the background and attach to it",
-  "main": "src/main.js",
   "repository": "git@github.com:joaomoreno/deemon.git",
   "author": "João Moreno",
   "license": "MIT",
+  "bin": "deemon.js",
   "engines": {
     "node": ">=10"
   },
