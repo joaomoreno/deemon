@@ -5,7 +5,7 @@
   "repository": "git@github.com:joaomoreno/deemon.git",
   "author": "João Moreno",
   "license": "MIT",
-  "bin": "deemon.js",
+  "bin": "src/deemon.js",
   "engines": {
     "node": ">=10"
   },
