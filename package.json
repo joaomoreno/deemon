@@ -1,0 +1,24 @@
+{
+  "name": "deemon",
+  "version": "1.0.0",
+  "description": "Run a process in the background and attach to it",
+  "main": "src/main.js",
+  "repository": "git@github.com:joaomoreno/deemon.git",
+  "author": "João Moreno",
+  "license": "MIT",
+  "engines": {
+    "node": ">=10"
+  },
+  "scripts": {
+    "watch": "tsc --watch",
+    "prepublish": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "10",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "bl": "^4.0.2",
+    "tree-kill": "^1.2.2"
+  }
+}
