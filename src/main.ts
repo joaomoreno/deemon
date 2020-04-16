@@ -169,7 +169,7 @@ async function main(command: Command, options: Options): Promise<void> {
 }
 
 if (process.argv.length < 3) {
-	console.error(`Usage: node daemon.js [OPTS] COMMAND [...ARGS]
+	console.error(`Usage: npx deemon [OPTS] COMMAND [...ARGS]
 Options:
   --kill     Kill the currently running daemon
   --restart  Restart the daemon`);
