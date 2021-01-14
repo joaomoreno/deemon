@@ -120,6 +120,7 @@ interface Options {
 	readonly daemon: boolean;
 	readonly kill: boolean;
 	readonly restart: boolean;
+	readonly detach: boolean;
 }
 
 async function main(command: Command, options: Options): Promise<void> {
@@ -166,12 +167,18 @@ async function main(command: Command, options: Options): Promise<void> {
 		console.log('Build daemon exited.');
 		process.exit(0);
 	});
+
+	if (options.detach) {
+		console.log('Build daemon detach.');
+		process.exit(0);
+	}
 }
 
 if (process.argv.length < 3) {
 	console.error(`Usage: npx deemon [OPTS] COMMAND [...ARGS]
 Options:
   --kill     Kill the currently running daemon
+  --detach 	 Detach the deamon
   --restart  Restart the daemon`);
 	process.exit(1);
 }
@@ -188,7 +195,8 @@ const optionsArgv = process.argv.slice(2, commandPathIndex);
 const options: Options = {
 	daemon: optionsArgv.some(arg => arg === '--daemon'),
 	kill: optionsArgv.some(arg => arg === '--kill'),
-	restart: optionsArgv.some(arg => arg === '--restart')
+	restart: optionsArgv.some(arg => arg === '--restart'),
+	detach : optionsArgv.some(arg => arg === '--detach')
 };
 
 main(command, options).catch(err => {
