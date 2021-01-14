@@ -178,7 +178,7 @@ if (process.argv.length < 3) {
 	console.error(`Usage: npx deemon [OPTS] COMMAND [...ARGS]
 Options:
   --kill     Kill the currently running daemon
-  --detach 	 Detach the deamon
+  --detach   Detach the deamon
   --restart  Restart the daemon`);
 	process.exit(1);
 }
