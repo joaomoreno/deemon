@@ -169,7 +169,7 @@ async function main(command: Command, options: Options): Promise<void> {
 	});
 
 	if (options.detach) {
-		console.log('Build daemon detach.');
+		console.log('Detached from build daemon.');
 		process.exit(0);
 	}
 }
