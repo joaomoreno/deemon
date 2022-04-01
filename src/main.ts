@@ -86,13 +86,13 @@ export function spawnCommand(server: net.Server, command: Command): void {
 		});
 	});
 
-	child.on('exit', () => {
+	child.on('exit', code => {
 		for (const client of clients) {
 			client.destroy();
 		}
 
 		server.close();
-		process.exit(0);
+		process.exit(code);
 	});
 }
 
