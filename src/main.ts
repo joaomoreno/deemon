@@ -8,6 +8,9 @@ import * as crypto from 'crypto';
 import * as treekill from 'tree-kill';
 const { BufferListStream } = require('bl');
 
+const KILL = 0xd3ad;
+const TALK = 0xb1a7;
+
 interface Command {
 	readonly path: string;
 	readonly args: string[];
@@ -68,21 +71,25 @@ export function spawnCommand(server: net.Server, command: Command): void {
 	});
 
 	server.on('connection', socket => {
-		const bufferStream = bl.duplicate();
+		socket.once('data', buffer => {
+			const command = buffer[0];
 
-		bufferStream.pipe(socket, { end: false });
-		bufferStream.on('end', () => {
-			child.stdout.pipe(socket);
-			clients.add(socket);
-
-			socket.on('data', () => {
+			if (command === KILL) {
 				treekill(child.pid);
-			});
-
-			socket.on('close', () => {
-				child.stdout.unpipe(socket);
-				clients.delete(socket);
-			});
+			} else if (command === TALK) {
+				const bufferStream = bl.duplicate();
+		
+				bufferStream.pipe(socket, { end: false });
+				bufferStream.on('end', () => {
+					child.stdout.pipe(socket);
+					clients.add(socket);
+		
+					socket.on('close', () => {
+						child.stdout.unpipe(socket);
+						clients.delete(socket);
+					});
+				});
+			}
 		});
 	});
 
@@ -134,16 +141,17 @@ async function main(command: Command, options: Options): Promise<void> {
 	let socket = await connect(command, handle);
 
 	if (options.kill) {
-		socket.write('kill');
+		socket.write(new Uint8Array([KILL]));
 		return;
 	}
 
 	if (options.restart) {
-		socket.write('kill');
+		socket.write(new Uint8Array([KILL]));
 		await new Promise(c => setTimeout(c, 500));
 		socket = await connect(command, handle);
 	}
 
+	socket.write(new Uint8Array([TALK]));
 	readline.emitKeypressEvents(process.stdin);
 
 	if (process.stdin.isTTY && process.stdin.setRawMode) {
@@ -156,7 +164,7 @@ async function main(command: Command, options: Options): Promise<void> {
 			process.exit(0);
 		} else if (code === '\u0004') { // ctrl d
 			console.log('Killed build daemon.');
-			socket.write('kill');
+			socket.write(new Uint8Array([KILL]));
 			process.exit(0);
 		}
 	});
