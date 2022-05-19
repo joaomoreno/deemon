@@ -8,8 +8,8 @@ import * as crypto from 'crypto';
 import * as treekill from 'tree-kill';
 const { BufferListStream } = require('bl');
 
-const KILL = 0xd3ad;
-const TALK = 0xb1a7;
+const KILL = 0;
+const TALK = 1;
 
 interface Command {
 	readonly path: string;
@@ -71,7 +71,7 @@ export function spawnCommand(server: net.Server, command: Command): void {
 	});
 
 	server.on('connection', socket => {
-		socket.once('data', buffer => {
+		socket.on('data', buffer => {
 			const command = buffer[0];
 
 			if (command === KILL) {
