@@ -66,14 +66,17 @@ export function spawnCommand(server: net.Server, command: Command): void {
     windowsHide: true,
   });
 
-  child.stdout.on("data", (data) => {
+  const onData = (data) => {
     bl.append(data);
 
     if (bl.length > 1_000_000) {
       // buffer caps at 1MB
       bl.consume(bl.length - 1_000_000);
     }
-  });
+  };
+
+  child.stdout.on("data", onData);
+  child.stderr.on("data", onData);
 
   server.on("connection", (socket) => {
     socket.on("data", (buffer) => {
@@ -87,10 +90,12 @@ export function spawnCommand(server: net.Server, command: Command): void {
         bufferStream.pipe(socket, { end: false });
         bufferStream.on("end", () => {
           child.stdout.pipe(socket);
+          child.stderr.pipe(socket);
           clients.add(socket);
 
           socket.on("close", () => {
             child.stdout.unpipe(socket);
+            child.stderr.unpipe(socket);
             clients.delete(socket);
           });
         });
@@ -98,7 +103,7 @@ export function spawnCommand(server: net.Server, command: Command): void {
     });
   });
 
-  child.on("exit", (code) => {
+  child.on("close", (code) => {
     for (const client of clients) {
       client.destroy();
     }
