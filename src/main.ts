@@ -156,7 +156,8 @@ async function main(command: Command, options: Options): Promise<void> {
 
   if (options.kill) {
     socket.write(new Uint8Array([KILL]));
-    return;
+    console.log("Killed build daemon.");
+    process.exit(0);
   }
 
   if (options.restart) {
