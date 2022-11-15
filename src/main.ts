@@ -78,6 +78,7 @@ export function spawnCommand(server: net.Server, command: Command): void {
   child.stdout.on("data", onData);
   child.stderr.on("data", onData);
 
+  let first = true;
   server.on("connection", (socket) => {
     socket.on("data", (buffer) => {
       const command = buffer[0];
@@ -92,6 +93,13 @@ export function spawnCommand(server: net.Server, command: Command): void {
           child.stdout.pipe(socket);
           child.stderr.pipe(socket);
           clients.add(socket);
+
+          if (first) {
+            socket.write("[deemon] Spawned build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n");
+            first = false;
+          } else {
+            setTimeout(() => socket.write("[deemon] Attached to running build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n"), 0);
+          }
 
           socket.on("close", () => {
             child.stdout.unpipe(socket);
@@ -175,13 +183,11 @@ async function main(command: Command, options: Options): Promise<void> {
   process.stdin.on("keypress", (code) => {
     if (code === "\u0003") {
       // ctrl c
-      console.log(
-        "Disconnected from build daemon, it will stay running in the background."
-      );
+      console.log("[deemon] Detached from build daemon.");
       process.exit(0);
     } else if (code === "\u0004") {
       // ctrl d
-      console.log("Killed build daemon.");
+      console.log("[deemon] Killed build daemon.");
       socket.write(new Uint8Array([KILL]));
       process.exit(0);
     }
@@ -190,12 +196,12 @@ async function main(command: Command, options: Options): Promise<void> {
   socket.pipe(process.stdout);
 
   socket.on("close", () => {
-    console.log("Build daemon exited.");
+    console.log("[deemon] Build daemon exited.");
     process.exit(0);
   });
 
   if (options.detach) {
-    console.log("Detached from build daemon.");
+    console.log("[deemon] Detached from build daemon.");
     process.exit(0);
   }
 }
