@@ -6,7 +6,7 @@ import * as cp from "child_process";
 import * as readline from "readline";
 import * as crypto from "crypto";
 import * as treekill from "tree-kill";
-const { BufferListStream } = require("bl");
+import { BufferListStream } from "bl";
 
 const KILL = 0;
 const TALK = 1;
