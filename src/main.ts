@@ -58,7 +58,7 @@ export function createConnection(handle: string): Promise<net.Socket> {
   });
 }
 
-export function spawnCommand(server: net.Server, command: Command): void {
+export function spawnCommand(server: net.Server, command: Command, options: Options): void {
   const clients = new Set<net.Socket>();
   const bl = new BufferListStream();
   const child = cp.spawn(command.path, command.args, {
@@ -79,6 +79,8 @@ export function spawnCommand(server: net.Server, command: Command): void {
   child.stderr.on("data", onData);
 
   let first = true;
+  let childExitCode: number | undefined;
+
   server.on("connection", (socket) => {
     socket.on("data", (buffer) => {
       const command = buffer[0];
@@ -90,6 +92,15 @@ export function spawnCommand(server: net.Server, command: Command): void {
 
         bufferStream.pipe(socket, { end: false });
         bufferStream.on("end", () => {
+          if (childExitCode !== undefined) {
+            for (const client of clients) {
+              client.destroy();
+            }
+
+            server.close();
+            process.exit(childExitCode);
+          }
+
           child.stdout.pipe(socket);
           child.stderr.pipe(socket);
           clients.add(socket);
@@ -112,6 +123,11 @@ export function spawnCommand(server: net.Server, command: Command): void {
   });
 
   child.on("close", (code) => {
+    if (options.wait && clients.size === 0) {
+      childExitCode = code;
+      return;
+    }
+
     for (const client of clients) {
       client.destroy();
     }
@@ -121,7 +137,7 @@ export function spawnCommand(server: net.Server, command: Command): void {
   });
 }
 
-async function connect(command: Command, handle: string): Promise<net.Socket> {
+async function connect(command: Command, handle: string, options: Options): Promise<net.Socket> {
   try {
     return await createConnection(handle);
   } catch (err) {
@@ -131,14 +147,14 @@ async function connect(command: Command, handle: string): Promise<net.Socket> {
       throw err;
     }
 
-    cp.spawn(
-      process.execPath,
-      [process.argv[1], "--daemon", command.path, ...command.args],
-      {
-        detached: true,
-        stdio: "ignore",
-      }
-    );
+    const args = [process.argv[1], '--daemon'];
+
+    if (options.wait) {
+      args.push('--wait');
+    }
+
+    args.push(command.path, ...command.args);
+    cp.spawn(process.execPath, args, { detached: true, stdio: "ignore", });
 
     await new Promise((c) => setTimeout(c, 200));
     return await createConnection(handle);
@@ -150,6 +166,7 @@ interface Options {
   readonly kill: boolean;
   readonly restart: boolean;
   readonly detach: boolean;
+  readonly wait: boolean;
 }
 
 async function main(command: Command, options: Options): Promise<void> {
@@ -157,10 +174,10 @@ async function main(command: Command, options: Options): Promise<void> {
 
   if (options.daemon) {
     const server = await createServer(handle);
-    return spawnCommand(server, command);
+    return spawnCommand(server, command, options);
   }
 
-  let socket = await connect(command, handle);
+  let socket = await connect(command, handle, options);
 
   if (options.kill) {
     socket.write(new Uint8Array([KILL]));
@@ -170,7 +187,7 @@ async function main(command: Command, options: Options): Promise<void> {
   if (options.restart) {
     socket.write(new Uint8Array([KILL]));
     await new Promise((c) => setTimeout(c, 500));
-    socket = await connect(command, handle);
+    socket = await connect(command, handle, options);
   }
 
   socket.write(new Uint8Array([TALK]));
@@ -210,7 +227,8 @@ if (process.argv.length < 3) {
   console.error(`Usage: npx deemon [OPTS] COMMAND [...ARGS]
 Options:
   --kill     Kill the currently running daemon
-  --detach   Detach the deamon
+  --detach   Detach the daemon
+  --wait     Wait for a client to connect before exiting the daemon (only valid with --detach)
   --restart  Restart the daemon`);
   process.exit(1);
 }
@@ -231,6 +249,7 @@ const options: Options = {
   kill: optionsArgv.some((arg) => arg === "--kill"),
   restart: optionsArgv.some((arg) => arg === "--restart"),
   detach: optionsArgv.some((arg) => arg === "--detach"),
+  wait: optionsArgv.some((arg) => arg === "--wait"),
 };
 
 main(command, options).catch((err) => {
