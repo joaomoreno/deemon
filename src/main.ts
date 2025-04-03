@@ -69,9 +69,9 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
   const onData = (data) => {
     bl.append(data);
 
-    if (bl.length > 1_000_000) {
-      // buffer caps at 1MB
-      bl.consume(bl.length - 1_000_000);
+    if (bl.length > 100_000_000) {
+      // buffer caps at 100MB
+      bl.consume(bl.length - 100_000_000);
     }
   };
 
