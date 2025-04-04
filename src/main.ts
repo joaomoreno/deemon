@@ -141,7 +141,10 @@ async function connect(command: Command, handle: string, options: Options): Prom
   try {
     return await createConnection(handle);
   } catch (err) {
-    if (err.code === "ECONNREFUSED") {
+    if (options.attach && (err.code === "ENOENT" || err.code === "ECONNREFUSED")) {
+      console.error("[deemon] No daemon running.");
+      process.exit(1);
+    } else if (err.code === "ECONNREFUSED") {
       await fs.promises.unlink(handle);
     } else if (err.code !== "ENOENT") {
       throw err;
@@ -167,6 +170,7 @@ interface Options {
   readonly restart: boolean;
   readonly detach: boolean;
   readonly wait: boolean;
+  readonly attach: boolean;
 }
 
 async function main(command: Command, options: Options): Promise<void> {
@@ -219,6 +223,9 @@ async function main(command: Command, options: Options): Promise<void> {
 
   if (options.detach) {
     console.log("[deemon] Detached from build daemon.");
+    if (options.wait) {
+      console.log("[deemon] Daemon will wait for a client to connect before exiting.");
+    }
     process.exit(0);
   }
 }
@@ -229,6 +236,7 @@ Options:
   --kill     Kill the currently running daemon
   --detach   Detach the daemon
   --wait     Wait for a client to connect before exiting the daemon (only valid with --detach)
+  --attach   Attach to the currently running daemon, exiting if it doesn't exist
   --restart  Restart the daemon`);
   process.exit(1);
 }
@@ -250,6 +258,7 @@ const options: Options = {
   restart: optionsArgv.some((arg) => arg === "--restart"),
   detach: optionsArgv.some((arg) => arg === "--detach"),
   wait: optionsArgv.some((arg) => arg === "--wait"),
+  attach: optionsArgv.some((arg) => arg === "--attach")
 };
 
 main(command, options).catch((err) => {
