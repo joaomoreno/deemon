@@ -101,8 +101,8 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
             process.exit(childExitCode);
           }
 
-          child.stdout.pipe(socket);
-          child.stderr.pipe(socket);
+          child.stdout.pipe(socket, { end: false });
+          child.stderr.pipe(socket, { end: false });
           clients.add(socket);
 
           if (first) {
@@ -122,13 +122,14 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
     });
   });
 
-  child.on("close", (code) => {
+  child.on("close", code => {
     if (options.wait && clients.size === 0) {
       childExitCode = code;
       return;
     }
 
     for (const client of clients) {
+      client.end(new Uint8Array([code]));
       client.destroy();
     }
 
@@ -214,11 +215,26 @@ async function main(command: Command, options: Options): Promise<void> {
     }
   });
 
-  socket.pipe(process.stdout);
+  let lastByte: Buffer | null = null;
+
+  socket.on('data', (data) => {
+    if (data.length === 0) return;
+
+    if (lastByte) {
+      process.stdout.write(lastByte);
+    }
+
+    lastByte = data.slice(data.length - 1);
+
+    if (data.length > 1) {
+      process.stdout.write(data.slice(0, data.length - 1));
+    }
+  });
 
   socket.on("close", () => {
-    console.log("[deemon] Build daemon exited.");
-    process.exit(0);
+    const code = lastByte ? lastByte[0] : 0;
+    console.log("[deemon] Build daemon exited with code", code);
+    process.exit(code);
   });
 
   if (options.detach) {
