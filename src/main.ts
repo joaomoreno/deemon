@@ -111,13 +111,15 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
           } else {
             setTimeout(() => socket.write("[deemon] Attached to running build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n"), 0);
           }
-
-          socket.on("close", () => {
-            child.stdout.unpipe(socket);
-            child.stderr.unpipe(socket);
-            clients.delete(socket);
-          });
         });
+      }
+    });
+
+    socket.on("close", () => {
+      if (clients.has(socket)) {
+        child.stdout.unpipe(socket);
+        child.stderr.unpipe(socket);
+        clients.delete(socket);
       }
     });
   });
@@ -184,6 +186,16 @@ async function main(command: Command, options: Options): Promise<void> {
 
   let socket = await connect(command, handle, options);
 
+  if (options.detach) {
+    console.log("[deemon] Detached from build daemon.");
+
+    if (options.wait) {
+      console.log("[deemon] Daemon will wait for a client to connect before exiting.");
+    }
+
+    process.exit(0);
+  }
+
   if (options.kill) {
     socket.write(new Uint8Array([KILL]));
     return;
@@ -236,14 +248,6 @@ async function main(command: Command, options: Options): Promise<void> {
     console.log("[deemon] Build daemon exited with code", code);
     process.exit(code);
   });
-
-  if (options.detach) {
-    console.log("[deemon] Detached from build daemon.");
-    if (options.wait) {
-      console.log("[deemon] Daemon will wait for a client to connect before exiting.");
-    }
-    process.exit(0);
-  }
 }
 
 if (process.argv.length < 3) {
