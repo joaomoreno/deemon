@@ -78,7 +78,9 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
   child.stdout.on("data", onData);
   child.stderr.on("data", onData);
 
-  let first = true;
+  let justSpawned = true;
+  setTimeout(() => justSpawned = false, 210);
+
   let childExitCode: number | undefined;
 
   server.on("connection", (socket) => {
@@ -105,9 +107,9 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
           child.stderr.pipe(socket, { end: false });
           clients.add(socket);
 
-          if (first) {
-            socket.write("[deemon] Spawned build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n");
-            first = false;
+          if (justSpawned) {
+            setTimeout(() => socket.write("[deemon] Spawned build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n"), 200);
+            justSpawned = false;
           } else {
             setTimeout(() => socket.write("[deemon] Attached to running build daemon. Press Ctrl-C to detach, Ctrl-D to kill.\n"), 0);
           }
@@ -140,6 +142,17 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
   });
 }
 
+function spawnDaemon(command: Command, options: Options) {
+  const args = [process.argv[1], '--daemon'];
+
+  if (options.wait) {
+    args.push('--wait');
+  }
+
+  args.push(command.path, ...command.args);
+  cp.spawn(process.execPath, args, { detached: true, stdio: "ignore" });
+}
+
 async function connect(command: Command, handle: string, options: Options): Promise<net.Socket> {
   try {
     return await createConnection(handle);
@@ -153,15 +166,7 @@ async function connect(command: Command, handle: string, options: Options): Prom
       throw err;
     }
 
-    const args = [process.argv[1], '--daemon'];
-
-    if (options.wait) {
-      args.push('--wait');
-    }
-
-    args.push(command.path, ...command.args);
-    cp.spawn(process.execPath, args, { detached: true, stdio: "ignore", });
-
+    spawnDaemon(command, options);
     await new Promise((c) => setTimeout(c, 200));
     return await createConnection(handle);
   }
@@ -184,9 +189,9 @@ async function main(command: Command, options: Options): Promise<void> {
     return spawnCommand(server, command, options);
   }
 
-  let socket = await connect(command, handle, options);
-
   if (options.detach) {
+    spawnDaemon(command, options);
+
     console.log("[deemon] Detached from build daemon.");
 
     if (options.wait) {
@@ -195,6 +200,8 @@ async function main(command: Command, options: Options): Promise<void> {
 
     process.exit(0);
   }
+
+  let socket = await connect(command, handle, options);
 
   if (options.kill) {
     socket.write(new Uint8Array([KILL]));
