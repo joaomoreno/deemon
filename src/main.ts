@@ -96,9 +96,11 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
         bufferStream.on("end", () => {
           if (childExitCode !== undefined) {
             for (const client of clients) {
+              client.end(new Uint8Array([childExitCode]));
               client.destroy();
             }
 
+            socket.end(new Uint8Array([childExitCode]));
             server.close();
             process.exit(childExitCode);
           }
