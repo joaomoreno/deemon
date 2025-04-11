@@ -11,7 +11,7 @@
   },
   "scripts": {
     "watch": "tsc --watch",
-    "prepublish": "tsc"
+    "prepublishOnly": "tsc"
   },
   "devDependencies": {
     "@types/node": "10",
