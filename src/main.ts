@@ -239,8 +239,11 @@ async function main(command: Command, options: Options): Promise<void> {
   });
 
   let lastByte: Buffer | null = null;
+  let lastByteTimer: NodeJS.Timeout | null = null;
 
   socket.on('data', (data) => {
+    clearTimeout(lastByteTimer);
+    
     if (data.length === 0) return;
 
     if (lastByte) {
@@ -251,6 +254,7 @@ async function main(command: Command, options: Options): Promise<void> {
 
     if (data.length > 1) {
       process.stdout.write(data.slice(0, data.length - 1));
+      lastByteTimer = setTimeout(() => process.stdout.write(lastByte), 100);
     }
   });
 
