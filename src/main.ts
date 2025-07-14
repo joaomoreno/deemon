@@ -82,6 +82,7 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
   setTimeout(() => justSpawned = false, 210);
 
   let childExitCode: number | undefined;
+  let childSignal: string | undefined;
 
   server.on("connection", (socket) => {
     socket.on("data", (buffer) => {
@@ -94,15 +95,18 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
 
         bufferStream.pipe(socket, { end: false });
         bufferStream.on("end", () => {
-          if (childExitCode !== undefined) {
+          if (childExitCode !== undefined || childSignal !== undefined) {
+            const exitCode = childExitCode ?? 1;
+
             for (const client of clients) {
-              client.end(new Uint8Array([childExitCode]));
+              client.end(new Uint8Array([exitCode]));
             }
 
-            socket.end(new Uint8Array([childExitCode]));
+            socket.write(`[deemon] Daemon was stopped when client attached (exit code ${childExitCode}, signal ${childSignal}).\n`);
+            socket.end(new Uint8Array([exitCode]));
             setTimeout(() => {
               server.close();
-              process.exit(childExitCode);
+              process.exit(exitCode);
             }, 0); // windows needs a timeout
             return;
           }
@@ -130,19 +134,20 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
     });
   });
 
-  child.on("close", code => {
+  child.on("close", (code: number | null, signal: string | null) => {
     if (options.wait && clients.size === 0) {
       childExitCode = code;
+      childSignal = signal;
       return;
     }
 
     for (const client of clients) {
-      client.end(new Uint8Array([code]));
+      client.end(new Uint8Array([code ?? 1]));
       client.destroy();
     }
 
     server.close();
-    process.exit(code);
+    process.exit(code ?? 1);
   });
 }
 
@@ -243,7 +248,6 @@ async function main(command: Command, options: Options): Promise<void> {
 
   socket.on('data', (data) => {
     clearTimeout(lastByteTimer);
-    
     if (data.length === 0) return;
 
     if (lastByte) {
