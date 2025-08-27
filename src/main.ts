@@ -98,16 +98,22 @@ export function spawnCommand(server: net.Server, command: Command, options: Opti
           if (childExitCode !== undefined || childSignal !== undefined) {
             const exitCode = childExitCode ?? 1;
 
+            let totalCount = 1;
+            let doneCount = 0;
+            const cb = () => {
+              if (++doneCount === totalCount) {
+                server.close();
+                process.exit(exitCode);
+              }
+            };
+
             for (const client of clients) {
-              client.end(new Uint8Array([exitCode]));
+              totalCount++;
+              client.end(new Uint8Array([exitCode]), cb);
             }
 
             socket.write(`[deemon] Daemon was stopped when client attached (exit code ${childExitCode}, signal ${childSignal}).\n`);
-            socket.end(new Uint8Array([exitCode]));
-            setTimeout(() => {
-              server.close();
-              process.exit(exitCode);
-            }, 0); // windows needs a timeout
+            socket.end(new Uint8Array([exitCode]), cb);
             return;
           }
 
