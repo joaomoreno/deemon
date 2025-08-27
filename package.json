@@ -7,14 +7,14 @@
   "license": "MIT",
   "bin": "src/deemon.js",
   "engines": {
-    "node": ">=10"
+    "node": ">=22"
   },
   "scripts": {
     "watch": "tsc --watch",
     "prepublishOnly": "tsc"
   },
   "devDependencies": {
-    "@types/node": "10",
+    "@types/node": "^22.18.0",
     "typescript": "^5.8.2"
   },
   "dependencies": {
